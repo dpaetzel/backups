@@ -1,0 +1,4 @@
+$HOME/.cache/
+$HOME/.julia/compiled/
+$HOME/.spotify/
+venv/
