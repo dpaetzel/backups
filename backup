@@ -7,22 +7,7 @@
 # TODO Consider to use a general exclude file and additional exclude files for each target
 
 
-# A table of drive names (usually their filesystem labels but can be anything;
-# is just used within this script for helping user understand what's going on)
-# and filesystem UUIDs.
-set drives \
-    d2-seagate-5tb 5c105a36-8a71-4b0f-a558-86c307b9452f \
-    d3-sandisk-1tb 2a715088-facc-4f02-af28-8033fbcb7a1f
-
-
-# A list of directories to back up.
-set targets \
-    "$HOME" \
-    /mnt/HoefflCloud
-
-
-set exclude_file (dirname (status --current-filename))/excludes.txt
-echo "Using exclude file $exclude_file …"
+source (dirname (status --current-filename))/config
 
 
 # `seq 1 2 n` creates a list of 1 to n with step width 2.
