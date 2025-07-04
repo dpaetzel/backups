@@ -1,0 +1,71 @@
+#!/usr/bin/env fish
+
+# Abort if user is not in smbuser group.
+if not groups | grep -qw smbuser
+    echo "Error: This script must be run by a user in the 'smbuser' group." >&2
+    exit 1
+end
+
+# A table of drive names (usually their filesystem labels but can be anything;
+# is just used within this script for helping user understand what's going on)
+# and filesystem UUIDs.
+set drives \
+    d2-seagate-5tb 5c105a36-8a71-4b0f-a558-86c307b9452f \
+    d3-sandisk-1tb 2a715088-facc-4f02-af28-8033fbcb7a1f
+
+
+set btrfs_root /mnt/nas1
+set target HoefflCloud
+
+# `seq 1 2 n` creates a list of 1 to n with step width 2.
+for idx in (seq 1 2 (count $drives))
+    set name $drives[$idx]
+    set uuid $drives[(math $idx + 1)]
+
+    # Try to mount.
+    udiskie-mount $uuid
+
+    # Find the mount point.
+    set mnt (findmnt -S UUID=$uuid -o Target --noheadings)
+    # This will probably not happen because $status is 1 if `findmnt` doesn't
+    # find the UUID.
+    if test \( $status -ne 0 \)
+        echo "$name not plugged in, continuing …"
+        continue
+    end
+    and echo "Detected $name mounted at $mnt."
+
+    and echo "Backing up to $name mounted at $mnt …"
+
+    and set repopath "$mnt"/Backups/(hostname)
+    # If there's no repo yet, initialize a new one.
+    and if test ! -f "$repopath"/config
+        mkdir -p "$repopath"
+        and restic --repo "$repopath" init
+    end
+
+    # Create snapshot with fixed path (same path so that restic backup history
+    # looks clean, will move the snapshot to a timestamped path after the
+    # backup).
+    and set snapshot_path $btrfs_root/Snapshots/$target
+    # Jeez Louis, this is ugly but apparently we can't get around the sudo -u
+    # here?  https://superuser.com/questions/1787683
+    and sudo -u smbuser btrfs subvolume snapshot -r $btrfs_root/$target $snapshot_path
+
+    # Create timestamp early so it's shared with restic and rename.
+    and set timestamp (date "+%Y-%m-%dT%H%M%S")
+
+    and echo "Starting backup of snapshot $snapshot_path …"
+    and restic --repo "$repopath" --verbose \
+        backup \
+        --tag $timestamp \
+        "$snapshot_path"
+
+    # Rename snapshot after backup.
+    and mv $snapshot_path $btrfs_root/Snapshots/{$timestamp}_$target
+
+    restic --repo "$repopath" snapshots
+end
+
+
+echo "No more drives left to backup to."
