@@ -7,7 +7,16 @@
 # TODO Consider to use a general exclude file and additional exclude files for each target
 
 
-source (dirname (status --current-filename))/config
+source (dirname (status --current-filename))/drives.config
+
+
+# A list of directories to back up.
+set targets \
+    "$HOME"
+
+
+set exclude_file (dirname (status --current-filename))/excludes.txt
+echo "Using exclude file $exclude_file …"
 
 
 # `seq 1 2 n` creates a list of 1 to n with step width 2.

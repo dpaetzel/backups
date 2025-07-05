@@ -1,18 +1,12 @@
 #!/usr/bin/env fish
 
+source (dirname (status --current-filename))/drives.config
+
 # Abort if user is not in smbuser group.
 if not groups | grep -qw smbuser
     echo "Error: This script must be run by a user in the 'smbuser' group." >&2
     exit 1
 end
-
-# A table of drive names (usually their filesystem labels but can be anything;
-# is just used within this script for helping user understand what's going on)
-# and filesystem UUIDs.
-set drives \
-    d2-seagate-5tb 5c105a36-8a71-4b0f-a558-86c307b9452f \
-    d3-sandisk-1tb 2a715088-facc-4f02-af28-8033fbcb7a1f
-
 
 set btrfs_root /mnt/nas1
 set target HoefflCloud
@@ -66,6 +60,5 @@ for idx in (seq 1 2 (count $drives))
 
     restic --repo "$repopath" snapshots
 end
-
 
 echo "No more drives left to backup to."
