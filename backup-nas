@@ -1,5 +1,13 @@
 #!/usr/bin/env fish
 
+
+# Ensure we are running inside tmux.
+if not set -q TMUX
+    echo "Must run this inside tmux!"
+    exit 1
+end
+
+
 source (dirname (status --current-filename))/drives.config
 
 # Abort if user is not in smbuser group.
