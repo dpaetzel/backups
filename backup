@@ -45,15 +45,21 @@ for idx in (seq 1 2 (count $drives))
         and restic --repo "$repopath" init
     end
 
+    # Create timestamp.
+    and set timestamp (date "+%Y-%m-%dT%H%M%S")
+
     and for target in $targets
         echo "Starting backup of $target …"
         and restic --repo "$repopath" --verbose \
             backup \
             --exclude-file $exclude_file \
-            "$target"
+            "$target" \
+            &| tee "$timestamp restic.log"
+        ntfyme "$status" "Backup to $repopath"
     end
 
-    restic --repo "$repopath" snapshots
+    # TODO Fetch username and password into env vars so this does not prompt me
+    # restic --repo "$repopath" snapshots
 
     # and restic --repo "$repopath" check
     # and restic --repo "$repopath" check --read-data-subset=10%
