@@ -1,0 +1,65 @@
+#!/usr/bin/env fish
+# test-restore — partial restore of the latest restic snapshot, manual run.
+#
+# connect.sh, ssh_key and known_hosts under /etc/restic are root-only (see NixOS
+# config), so restic itself must run as root. Invoke this script with sudo.
+#
+# The repository password is typed interactively; it is NOT read from
+# /etc/restic/password.
+#
+# Usage:  sudo ./test-restore /absolute/path/inside/snapshot
+#
+# To list real paths first:
+#   sudo env RESTIC_REPOSITORY=(sudo cat /etc/restic/repository) \
+#       restic -o sftp.command=/etc/restic/connect.sh ls latest
+
+# Must match services.myBackup.sftpCommand in backup-remote.nix.
+set sftp_command /etc/restic/connect.sh
+
+if test (id -u) -ne 0
+    echo "Run with sudo — connect.sh and ssh_key are root-only." >&2
+    exit 1
+end
+
+set include $argv[1]
+if test -z "$include"
+    echo "Usage: sudo $argv[0] /absolute/path/inside/snapshot" >&2
+    echo "(an absolute path as stored in the snapshot, e.g. /home/david/.gnupg)" >&2
+    exit 2
+end
+
+# Repository string — root-only file.
+set -x RESTIC_REPOSITORY (cat /etc/restic/repository)
+
+# --- restore ------------------------------------------------------------
+set target (mktemp -d /tmp/restic-restore-test.XXXXXX)
+echo "Restoring '$include' from snapshot 'latest' into $target"
+echo "Enter the repository password when prompted."
+echo
+
+# No --password-file: restic prompts on the terminal.
+# --verify re-reads the restored files and checks them against the
+# snapshot's recorded hashes.
+restic -o sftp.command=$sftp_command restore latest \
+    --include "$include" \
+    --target "$target" \
+    --verify
+set rc $status
+
+# --- check: restic exits 0 even if --include matched nothing ------------
+if test $rc -eq 0; and test -z "(find $target -mindepth 1 -print -quit)"
+    echo "WARNING: restic reported success but $target is EMPTY." >&2
+    echo "'$include' matched nothing in the snapshot — this tested nothing." >&2
+    set rc 3
+end
+
+if test $rc -eq 0
+    echo
+    echo "OK — restore and --verify passed. Restored tree:"
+    find $target -mindepth 1 -maxdepth 5 -printf '%P\n' | head -n 40
+    echo
+    echo "Inspect it, then clean up:  sudo rm -rf $target"
+else
+    echo "FAILED (exit $rc) — $target left for inspection." >&2
+end
+exit $rc
