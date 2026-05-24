@@ -40,10 +40,14 @@ end
 set -gx RESTIC_REPOSITORY "sftp:$sb_user@$sb_host:Backups/$hostname"
 set -gx RESTIC_PASSWORD_FILE "$password_file"
 
-# ── restic wrapper ─────────────────────────────────────────────────────
-# Global vars so the function (a separate scope) can see them.
-set -g _restic_ssh_cmd \
-    "ssh -F none -i $identity_file -o IdentitiesOnly=yes -p $sb_port $sb_user@$sb_host -s sftp"
+# ── Shared SSH options for both restic and the log-upload sftp ─────────
+# A list, so it expands to separate args. Port is passed separately
+# because sftp wants -P and ssh wants -p.
+set -g ssh_opts -F none -i "$identity_file" -o IdentitiesOnly=yes
+
+# restic's sftp.command needs a single string; join the list into it. Global
+# vars so the function (a separate scope) can see them.
+set -g _restic_ssh_cmd "ssh $ssh_opts -p $sb_port $sb_user@$sb_host -s sftp"
 
 function restic --description 'restic with Hetzner Storage Box sftp.command preset'
     command restic -o sftp.command="$_restic_ssh_cmd" $argv

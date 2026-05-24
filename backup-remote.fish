@@ -10,6 +10,7 @@ echo "Using exclude file $exclude_file …"
 set script_dir (dirname (status --current-filename))
 source "$script_dir/setup-remote.fish"
 
+set notify_config "$script_dir/notify.local.fish"
 if not test -r "$notify_config"
     echo "notify config missing at $notify_config" >&2
     exit 1
